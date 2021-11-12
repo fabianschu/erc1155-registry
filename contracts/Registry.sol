@@ -38,7 +38,5 @@ contract Registry is Ownable, ERC1155 {
         _setURI(_newBaseUri);
     }
 
-    function uri(uint256) public view override returns (string memory) {
-        return _uri;
-    }
+    //TODO: be able to edit the URI per ID and make sure its returned when uri is called
 }
