@@ -118,14 +118,22 @@ describe("Registry", function () {
     });
   });
 
-  describe("#setUri", () => {
-    it("returns the token URI", async () => {
-      const newUri = "lol";
-      await registryInstance.setBaseUri(newUri);
+  describe("#totalSupplyOfTier", () => {
+    const amount = 12;
 
-      const uri = await registryInstance.uri(tokenId);
+    beforeEach("create token tier & mint", async () => {
+      await registryInstance.createTokenTier(
+        tokenId,
+        uriIdentifier,
+        isTransferable
+      );
+      await registryInstance.mint(alice.address, tokenId, amount, data);
+    });
 
-      expect(uri).to.equal(newUri);
+    it("returns the correct supply for the tier", async () => {
+      const receivedSupply = await registryInstance.totalSupplyOfTier(tokenId);
+
+      expect(receivedSupply).to.equal(amount);
     });
   });
 });

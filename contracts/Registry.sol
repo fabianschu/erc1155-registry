@@ -11,7 +11,7 @@ import "hardhat/console.sol";
 struct TokenTier {
     uint128 uriId;
     bool transferable;
-    uint16 tokenSupply;
+    uint16 supply;
     uint16 allTiersIndex;
 }
 
@@ -30,10 +30,11 @@ contract Registry is Ownable, ERC1155 {
         Minting & burning
     */
 
-    function mint(address account, uint256 id, uint256 amount, bytes memory data) external onlyOwner{
+    function mint(address account, uint256 id, uint16 amount, bytes memory data) external onlyOwner{
         require(_tokenTiers[id].uriId != 0, "Tier does not exist");
 
         _mint(account, id, amount, data);
+        _tokenTiers[id].supply += amount;
     }
 
     /*
@@ -60,7 +61,7 @@ contract Registry is Ownable, ERC1155 {
         Configuration
     */
 
-    function setBaseUri(
+    function changeBaseUri(
         string memory _newBaseUri
     ) public onlyOwner {
         _setURI(_newBaseUri);
@@ -80,5 +81,9 @@ contract Registry is Ownable, ERC1155 {
         string memory baseUri = super.uri(tokenId);
         string memory uriId = _tokenTiers[tokenId].uriId.uint2str();
         return baseUri.append(uriId);
+    }
+
+    function totalSupplyOfTier(uint256 tokenId) public view returns (uint16) {
+        return _tokenTiers[tokenId].supply;
     }
 }
