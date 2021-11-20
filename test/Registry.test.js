@@ -2,10 +2,17 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("Registry", function () {
-  const baseUri = "https://ipfs.gateway/{id}";
-  const id = 5;
+  // base config
+  const baseUri = "https://ipfs.gateway/";
+
+  // mint
   const amount = 1;
   const data = 0;
+  const tokenId = 3;
+
+  // tier
+  const uriIdentifier = 5;
+  const isTransferable = false;
 
   let registryInstance, owner, alice, bob;
 
@@ -16,25 +23,55 @@ describe("Registry", function () {
   });
 
   describe("#mint", () => {
-    let account;
-
-    beforeEach("mint a token to alice", async () => {
-      account = alice.address;
-      await registryInstance.mint(account, id, amount, data);
+    it("reverts if token tier had not been set up before", async function () {
+      await expect(
+        registryInstance.mint(alice.address, tokenId, amount, data)
+      ).to.be.revertedWith("Tier does not exist");
     });
 
-    it("mints one token w/ correct id to account", async function () {
-      const balance = await registryInstance.balanceOf(account, id);
+    context("with existing token tier", () => {
+      beforeEach("create token tier", async () => {
+        await registryInstance.createTokenTier(
+          tokenId,
+          uriIdentifier,
+          isTransferable
+        );
+      });
 
-      expect(balance).to.equal(amount);
+      it("mints one token w/ correct id to account", async function () {
+        await registryInstance.mint(alice.address, tokenId, amount, data);
+
+        const balance = await registryInstance.balanceOf(
+          alice.address,
+          tokenId
+        );
+        expect(balance).to.equal(amount);
+      });
     });
   });
 
+  describe("#createTokenTier", () => {
+    it("sets uriIdentifierId for specified token ID", async () => {
+      await registryInstance.createTokenTier(
+        tokenId,
+        uriIdentifier,
+        isTransferable
+      );
+    });
+  });
+
+  // TODO
   describe("#mintBatch", () => {});
+  describe("#updateTokenTier", () => {});
 
   describe("#safeTransferFrom", () => {
-    beforeEach(async () => {
-      await registryInstance.mint(alice.address, id, amount, data);
+    beforeEach("create token tier & mint", async () => {
+      await registryInstance.createTokenTier(
+        tokenId,
+        uriIdentifier,
+        isTransferable
+      );
+      await registryInstance.mint(alice.address, tokenId, amount, data);
     });
 
     context("by owner of the token", () => {
@@ -42,7 +79,7 @@ describe("Registry", function () {
         expect(
           registryInstance
             .connect(alice)
-            .safeTransferFrom(alice.address, bob.address, id, amount, data)
+            .safeTransferFrom(alice.address, bob.address, tokenId, amount, data)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
@@ -52,36 +89,41 @@ describe("Registry", function () {
         await registryInstance.safeTransferFrom(
           alice.address,
           bob.address,
-          id,
+          tokenId,
           amount,
           data
         );
 
-        expect(await registryInstance.balanceOf(bob.address, id)).to.be.equal(
-          1
-        );
+        expect(
+          await registryInstance.balanceOf(bob.address, tokenId)
+        ).to.be.equal(1);
       });
     });
   });
 
   describe("#uri", () => {
-    beforeEach(async () => {
-      await registryInstance.mint(alice.address, id, amount, data);
+    beforeEach("create token tier & mint", async () => {
+      await registryInstance.createTokenTier(
+        tokenId,
+        uriIdentifier,
+        isTransferable
+      );
+      await registryInstance.mint(alice.address, tokenId, amount, data);
     });
 
-    it("returns the token URI", async () => {
-      const uri = await registryInstance.uri(id);
+    it("returns the baseUri appended by tokenUri", async () => {
+      const uri = await registryInstance.uri(tokenId);
 
-      expect(uri).to.equal(baseUri);
+      expect(uri).to.equal(`${baseUri}${uriIdentifier}`);
     });
   });
 
   describe("#setUri", () => {
     it("returns the token URI", async () => {
       const newUri = "lol";
-      await registryInstance.setBaseMetadataURI(newUri);
+      await registryInstance.setBaseUri(newUri);
 
-      const uri = await registryInstance.uri(id);
+      const uri = await registryInstance.uri(tokenId);
 
       expect(uri).to.equal(newUri);
     });
